@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodExpress - Online Food Delivery</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff4757;
+            --secondary: #2f3542;
+            --accent: #ff6b81;
+        }
+        .navbar-brand { color: var(--primary) !important; font-weight: bold; }
+        .hero-section {
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+                        url('https://source.unsplash.com/1600x900/?restaurant,food');
+            background-size: cover;
+            color: white;
+            padding: 100px 0;
+            text-align: center;
+        }
+        .card { transition: transform 0.3s; margin-bottom: 20px; }
+        .card:hover { transform: translateY(-5px); }
+        .food-img { height: 200px; object-fit: cover; }
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            padding: 4px 8px;
+        }
+        .btn-primary {
+            background-color: var(--primary);
+            border: none;
+        }
+        .btn-primary:hover { background-color: var(--accent); }
+        footer { background-color: var(--secondary); color: white; padding: 40px 0; }
+        #cartModal .modal-body { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">🍽️ FoodExpress</a>
+            <div class="d-flex align-items-center">
+                <a class="nav-link position-relative me-3" href="#" data-bs-toggle="modal" data-bs-target="#cartModal">
+                    🛒 <span class="cart-badge" id="cartCount">0</span>
+                </a>
+                <button class="btn btn-primary" onclick="userLogin()">Login</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-section">
+        <div class="container">
+            <h1>Delicious Food Delivered</h1>
+            <div class="col-md-6 mx-auto mt-4">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchBar" placeholder="Search food..." onkeyup="searchFood()">
+                    <button class="btn btn-primary">Search</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="container py-5">
+        <h2>Trending Dishes</h2>
+        <div class="row" id="menuList"></div>
+    </section>
+
+    <!-- Cart Modal -->
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Your Cart</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul id="cartItems" class="list-group"></ul>
+                    <h5 class="mt-3">Total: $<span id="cartTotal">0.00</span></h5>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success" onclick="checkout()">Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <p>&copy; 2024 FoodExpress. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        let cart = [];
+        const dishes = [
+            { name: "Pepperoni Pizza", price: 12.99, restaurant: "Pizza Palace", image: "https://imgs.search.brave.com/8KSOwJUW0xPtyGboujoZ7WRGqyCZEbBReMmOsLpZUdI/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5nZXR0eWltYWdl/cy5jb20vaWQvMTg0/OTQ2NzAxL3Bob3Rv/L3BpenphLmpwZz9z/PTYxMng2MTImdz0w/Jms9MjAmYz05N3Jj/MFZJaS1zM21uNHhl/NHhEeTlTLVhKX09o/Ym45MlhhRU1haUlE/X2VZPQ" },
+            { name: "Classic Burger", price: 8.99, restaurant: "Burger Hub", image: "https://imgs.search.brave.com/bvbw9kLPLlrcYgWOUiQsxIvhTfPGKNMyz6PU58CO7JQ/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5nZXR0eWltYWdl/cy5jb20vaWQvNjQz/ODIxMjgxL3Bob3Rv/L3BsYXRlLW9mLWJ1/cmdlci1hbmQtZnJp/ZXMuanBnP3M9NjEy/eDYxMiZ3PTAmaz0y/MCZjPUwyRkpGbm90/Sm9TZ0Frc1FjV0tf/N3R2ZlkzOFoxTkZl/VDBkODN5QzZkSU09" },
+            { name: "California Roll", price: 14.99, restaurant: "Sushi Master", image: "https://imgs.search.brave.com/ne4iq-Z--k4KQXjuCkBGR6hZIIA72P7Dpxv5-YNRtD4/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5nZXR0eWltYWdl/cy5jb20vaWQvMTc5/MDgxNDgxNi9waG90/by9mcmVzaC1nb3Vy/bWV0LXN1c2hpLW9t/YWthc2UtcmVzdGF1/cmFudC5qcGc_cz02/MTJ4NjEyJnc9MCZr/PTIwJmM9aVVMU2xL/bS0yQW9qZTNUSEsw/T01XYXNuSTdsQW5q/VWNkYUppRzBUOEdD/MD0" }
+        ];
+
+        function displayMenu() {
+            const list = document.getElementById('menuList');
+            list.innerHTML = "";
+            dishes.forEach(d => {
+                list.innerHTML += `
+                    <div class="col-md-4 food-item">
+                        <div class="card">
+                            <img src="${d.image}" class="food-img card-img-top" alt="${d.name}">
+                            <div class="card-body">
+                                <h5>${d.name}</h5>
+                                <p class="text-muted">${d.restaurant}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6>$${d.price.toFixed(2)}</h6>
+                                    <button class="btn btn-primary" onclick="addToCart('${d.name}', ${d.price})">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addToCart(name, price) {
+            cart.push({ name, price });
+            document.getElementById('cartCount').textContent = cart.length;
+            updateCartModal();
+        }
+
+        function updateCartModal() {
+            const cartItems = document.getElementById('cartItems');
+            const cartTotal = document.getElementById('cartTotal');
+            cartItems.innerHTML = "";
+            let total = 0;
+
+            cart.forEach((item, index) => {
+                total += item.price;
+                cartItems.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${item.name} - $${item.price.toFixed(2)}
+                        <button class="btn btn-sm btn-danger" onclick="removeFromCart(${index})">Remove</button>
+                    </li>
+                `;
+            });
+
+            cartTotal.textContent = total.toFixed(2);
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            document.getElementById('cartCount').textContent = cart.length;
+            updateCartModal();
+        }
+
+        function searchFood() {
+            const query = document.getElementById('searchBar').value.toLowerCase();
+            const items = document.querySelectorAll('.food-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('h5').textContent.toLowerCase();
+                if (name.includes(query)) {
+                    item.style.display = "block";
+                } else {
+                    item.style.display = "none";
+                }
+            });
+        }
+
+        function userLogin() {
+            const username = prompt("Enter your username:");
+            if (username) alert(`Welcome, ${username}!`);
+        }
+
+        function checkout() {
+            if (cart.length === 0) {
+                alert("Your cart is empty!");
+                return;
+            }
+            alert("Order placed successfully!");
+            cart = [];
+            document.getElementById('cartCount').textContent = "0";
+            updateCartModal();
+        }
+
+        displayMenu();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
